@@ -1,0 +1,38 @@
+{
+  "name": "watchanimeworld-api",
+  "version": "1.0.0",
+  "description": "A comprehensive RESTful API for scraping anime content from watchanimeworld.in",
+  "main": "src/index.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --hot src/index.ts",
+    "start": "bun run src/index.ts",
+    "build": "bun build src/index.ts --outdir ./dist --target bun",
+    "test": "bun test",
+    "test:integration": "bun test --integration",
+    "deploy": "wrangler deploy",
+    "cf-typegen": "wrangler types"
+  },
+  "keywords": [
+    "anime",
+    "scraper",
+    "api",
+    "hono",
+    "bun",
+    "watchanimeworld"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@hono/swagger-ui": "^0.5.2",
+    "axios": "^1.6.0",
+    "axios-cookiejar-support": "^5.0.0",
+    "cheerio": "^1.0.0",
+    "hono": "^4.0.0",
+    "tough-cookie": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "wrangler": "^4.53.0"
+  }
+}
