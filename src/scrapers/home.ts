@@ -27,12 +27,11 @@ export async function scrapeHome(): Promise<HomeData> {
         featured: [],
     };
 
-    // Extract latest series
-    // Look for sections with series content
-    $('.items.normal article, .item article, .post').each((_, el) => {
+    // Extract all posts/articles
+    $('article.post').each((_, el) => {
         const $el = $(el);
         const link = $el.find('a').first();
-        const title = cleanText(link.attr('title') || link.text() || '');
+        const title = cleanText(link.attr('title') || $el.find('.post-title, h2, h3').text() || '');
         const url = normalizeUrl(link.attr('href') || '');
         const poster = $el.find('img').first().attr('src') || $el.find('img').first().attr('data-src') || '';
 
@@ -53,50 +52,10 @@ export async function scrapeHome(): Promise<HomeData> {
                 animeInfo.type = 'movie';
                 homeData.latestMovies.push(animeInfo);
             }
-        }
-    });
 
-    // Extract trending/popular from specific sections
-    $('.trending .items article, .popular .items article, [class*="trending"] article, [class*="popular"] article').each((_, el) => {
-        const $el = $(el);
-        const link = $el.find('a').first();
-        const title = cleanText(link.attr('title') || link.text() || '');
-        const url = normalizeUrl(link.attr('href') || '');
-        const poster = $el.find('img').first().attr('src') || $el.find('img').first().attr('data-src') || '';
-
-        if (title && url) {
-            const id = extractIdFromUrl(url);
-            const animeInfo: AnimeInfo = {
-                id,
-                title,
-                poster: normalizeUrl(poster),
-                url,
-                type: url.includes('/series/') ? 'series' : 'movie',
-            };
-
-            if ($el.closest('.trending, [class*="trending"]').length > 0) {
-                homeData.trending?.push(animeInfo);
-            } else if ($el.closest('.popular, [class*="popular"]').length > 0) {
-                homeData.popular?.push(animeInfo);
-            }
-        }
-    });
-
-    // Extract featured content from sliders
-    $('.slider article, .featured article, [class*="slider"] article, [class*="featured"] article').each((_, el) => {
-        const $el = $(el);
-        const link = $el.find('a').first();
-        const title = cleanText(link.attr('title') || link.text() || $el.find('h2, h3, .title').text() || '');
-        const url = normalizeUrl(link.attr('href') || '');
-        const poster = $el.find('img').first().attr('src') || $el.find('img').first().attr('data-src') || '';
-
-        if (title && url) {
-            const id = extractIdFromUrl(url);
+            // Also add to featured for now
             homeData.featured?.push({
-                id,
-                title,
-                poster: normalizeUrl(poster),
-                url,
+                ...animeInfo,
                 type: url.includes('/series/') ? 'series' : 'movie',
             });
         }
