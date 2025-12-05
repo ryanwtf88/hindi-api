@@ -35,11 +35,11 @@ export async function scrapeCategory(category: string, page: number = 1): Promis
 
     const results: AnimeInfo[] = [];
 
-    // Extract category items
-    $('.items.normal article, .item article, .content article, .post').each((_, el) => {
+    // Extract category items using correct selector
+    $('article.post').each((_, el) => {
         const $el = $(el);
         const link = $el.find('a').first();
-        const title = cleanText(link.attr('title') || link.text() || $el.find('h2, h3, .title').text() || '');
+        const title = cleanText(link.attr('title') || $el.find('.post-title, h2, h3').text() || '');
         const itemUrl = normalizeUrl(link.attr('href') || '');
         const poster = $el.find('img').first().attr('src') || $el.find('img').first().attr('data-src') || '';
 
@@ -99,64 +99,22 @@ export async function scrapeCategoryByLanguage(language: string, page: number = 
         return cached;
     }
 
-    // Use search or category with language filter
-    // This might need adjustment based on actual site structure
-    const url = `${config.baseUrl}/language/${language}/page/${page}/`;
+    // Get all anime and filter by language
+    // The website doesn't have language-specific URLs, so we filter from the main category
+    const allContent = await scrapeCategory('anime', page);
+    const filtered = allContent.results.filter(item =>
+        item.language?.some(lang => lang.toLowerCase() === language.toLowerCase())
+    );
 
-    try {
-        const html = await fetchHtml(url);
-        const $ = loadHtml(html);
+    const categoryData: CategoryData = {
+        success: true,
+        category: `language-${language}`,
+        results: filtered,
+        pagination: allContent.pagination,
+    };
 
-        const results: AnimeInfo[] = [];
+    // Cache the result
+    cache.set(cacheKey, categoryData, config.cache.ttl.category);
 
-        $('.items.normal article, .item article, .content article, .post').each((_, el) => {
-            const $el = $(el);
-            const link = $el.find('a').first();
-            const title = cleanText(link.attr('title') || link.text() || $el.find('h2, h3, .title').text() || '');
-            const itemUrl = normalizeUrl(link.attr('href') || '');
-            const poster = $el.find('img').first().attr('src') || $el.find('img').first().attr('data-src') || '';
-
-            if (title && itemUrl) {
-                const id = extractIdFromUrl(itemUrl);
-                const type = itemUrl.includes('/series/') ? 'series' : 'movie';
-
-                results.push({
-                    id,
-                    title,
-                    poster: normalizeUrl(poster),
-                    url: itemUrl,
-                    type,
-                    language: [language],
-                });
-            }
-        });
-
-        const pagination = extractPagination($, page);
-
-        const categoryData: CategoryData = {
-            success: true,
-            category: `language-${language}`,
-            results,
-            pagination,
-        };
-
-        cache.set(cacheKey, categoryData, config.cache.ttl.category);
-
-        return categoryData;
-    } catch (error) {
-        // If language-specific URL doesn't work, fall back to filtering all content
-        console.warn(`Language-specific URL failed for ${language}, falling back to filtering`);
-
-        const allContent = await scrapeCategory('anime', page);
-        const filtered = allContent.results.filter(item =>
-            item.language?.some(lang => lang.toLowerCase() === language.toLowerCase())
-        );
-
-        return {
-            success: true,
-            category: `language-${language}`,
-            results: filtered,
-            pagination: allContent.pagination,
-        };
-    }
+    return categoryData;
 }
