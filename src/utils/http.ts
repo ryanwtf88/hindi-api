@@ -70,9 +70,12 @@ export { httpClient };
 /**
  * Fetch HTML content from a URL
  */
-export async function fetchHtml(url: string): Promise<string> {
+/**
+ * Fetch HTML content from a URL
+ */
+export async function fetchHtml(url: string, headers?: Record<string, string>): Promise<string> {
     try {
-        const response = await httpClient.get(url);
+        const response = await httpClient.get(url, { headers });
         return response.data;
     } catch (error) {
         console.error(`Error fetching ${url}:`, error);

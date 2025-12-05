@@ -5,11 +5,74 @@ import { config } from '../config';
 import type { StreamData } from '../types';
 
 /**
+ * Unpack Dean Edwards packed code
+ */
+function unpack(packed: string): string {
+    try {
+        const match = packed.match(/return\s+p}\('(.+?)',(\d+),(\d+),'(.+?)'\.split\('\|'\),(\d+),({}|\[\])\)\)/);
+        if (!match) return '';
+
+        let [_, p, aStr, cStr, kStr, eStr, dStr] = match;
+        const a = parseInt(aStr);
+        const c = parseInt(cStr);
+        const k = kStr.split('|');
+
+        // Basic unpacking logic
+        const e = (c: number) => {
+            return (c < a ? '' : e(Math.floor(c / a))) + ((c = c % a) > 35 ? String.fromCharCode(c + 29) : c.toString(36));
+        };
+
+        // Fill missing keywords
+        for (let i = 0; i < c; i++) {
+            if (!k[i]) k[i] = e(i);
+        }
+
+        // Replace tokens
+        // Using a simple regex replacement approach
+        // Note: This is a simplified version and might not handle all edge cases
+        return p.replace(/\b\w+\b/g, (w) => {
+            const v = parseInt(w, 36);
+            if (v < k.length && k[v]) return k[v];
+            return w;
+        });
+    } catch (error) {
+        console.error('Error unpacking code:', error);
+        return '';
+    }
+}
+
+/**
  * Extract stream URL from iframe embed
  */
-export async function extractStreamUrl(iframeUrl: string): Promise<string | null> {
+export async function extractStreamUrl(iframeUrl: string, headers?: Record<string, string>): Promise<string | null> {
     try {
-        const html = await fetchHtml(iframeUrl);
+        // Handle player1.php (WatchAnimeWorld API)
+        if (iframeUrl.includes('player1.php') && iframeUrl.includes('data=')) {
+            try {
+                const urlObj = new URL(iframeUrl);
+                const dataParam = urlObj.searchParams.get('data');
+                if (dataParam) {
+                    const decodedData = Buffer.from(dataParam, 'base64').toString('utf-8');
+                    const sources = JSON.parse(decodedData);
+
+                    // Try each source
+                    for (const source of sources) {
+                        if (source.link) {
+                            // The link might be a short URL that redirects
+                            // Pass Referer to bypass protection
+                            const streamUrl = await extractStreamUrl(source.link, {
+                                'Referer': 'https://watchanimeworld.in/',
+                            });
+                            if (streamUrl) return streamUrl;
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error('Error parsing player1.php data:', e);
+            }
+        }
+
+        const html = await fetchHtml(iframeUrl, headers);
         const $ = loadHtml(html);
 
         // Look for m3u8 URLs in the HTML
@@ -18,24 +81,46 @@ export async function extractStreamUrl(iframeUrl: string): Promise<string | null
         for (const script of scriptTags) {
             const scriptContent = $(script).html() || '';
 
-            // Look for m3u8 URLs
-            const m3u8Match = scriptContent.match(/(https?:\/\/[^\s"']+\.m3u8[^\s"']*)/);
+            // Look for m3u8 URLs (handling escaped slashes)
+            const m3u8Match = scriptContent.match(/(https?:\\?\/\\?\/[^\s"']+\.m3u8[^\s"']*)/);
             if (m3u8Match) {
-                return m3u8Match[1];
+                return m3u8Match[1].replace(/\\/g, ''); // Remove escape slashes
             }
 
             // Look for mp4 URLs
-            const mp4Match = scriptContent.match(/(https?:\/\/[^\s"']+\.mp4[^\s"']*)/);
+            const mp4Match = scriptContent.match(/(https?:\\?\/\\?\/[^\s"']+\.mp4[^\s"']*)/);
             if (mp4Match) {
-                return mp4Match[1];
+                return mp4Match[1].replace(/\\/g, '');
             }
 
             // Look for file: or source: properties
             const fileMatch = scriptContent.match(/["']?(?:file|source|src)["']?\s*:\s*["']([^"']+)["']/);
             if (fileMatch) {
                 const url = fileMatch[1];
-                if (url.startsWith('http')) {
+                if (url.startsWith('http') && !url.includes('demo.source') && !url.endsWith('.srt')) {
                     return url;
+                }
+            }
+
+            // Handle ZephyrFlick / AbyssCDN packed code
+            if (scriptContent.includes('eval(function(p,a,c,k,e,d)')) {
+                const unpacked = unpack(scriptContent);
+                if (unpacked) {
+                    // Look for m3u8 in unpacked code (handling escaped slashes)
+                    const m3u8Match = unpacked.match(/(https?:\\?\/\\?\/[^\s"']+\.m3u8[^\s"']*)/);
+                    if (m3u8Match) {
+                        return m3u8Match[1].replace(/\\/g, '');
+                    }
+
+                    // Look for sources array
+                    // sources:[{file:"https://..."}]
+                    const fileMatch = unpacked.match(/file["']?\s*:\s*["']([^"']+)["']/);
+                    if (fileMatch) {
+                        const url = fileMatch[1].replace(/\\/g, '');
+                        if (url.startsWith('http') && !url.includes('demo.source') && !url.endsWith('.srt')) {
+                            return url;
+                        }
+                    }
                 }
             }
         }
@@ -48,7 +133,7 @@ export async function extractStreamUrl(iframeUrl: string): Promise<string | null
 
         // Look for iframes (nested)
         const nestedIframe = $('iframe').first().attr('src');
-        if (nestedIframe && nestedIframe !== iframeUrl) {
+        if (nestedIframe && nestedIframe !== iframeUrl && !nestedIframe.startsWith('about:blank')) {
             // Recursively extract from nested iframe
             return await extractStreamUrl(normalizeUrl(nestedIframe));
         }
