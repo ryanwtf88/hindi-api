@@ -1,16 +1,10 @@
 {
   "version": 2,
-  "name": "hindi-anime-api",
-  "builds": [
+  "name": "hindi-api",
+  "rewrites": [
     {
-      "src": "api/index.ts",
-      "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "api/index.ts"
+      "source": "/(.*)",
+      "destination": "/api/index"
     }
   ],
   "functions": {
