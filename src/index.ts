@@ -17,7 +17,7 @@ import genre from './routes/genre';
 import crawl from './routes/crawl';
 
 // Create Hono app
-const app = new Hono();
+export const app = new Hono();
 
 // Middleware
 app.use('*', cors());
