@@ -1,0 +1,58 @@
+{
+  "version": 2,
+  "name": "hindi-anime-api",
+  "builds": [
+    {
+      "src": "api/index.mjs",
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": ["src/**"]
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/api/index.mjs"
+    }
+  ],
+  "functions": {
+    "api/index.mjs": {
+      "maxDuration": 30,
+      "memory": 1024,
+      "regions": ["iad1", "bom1"]
+    }
+  },
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, PUT, DELETE, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type, Authorization"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=300, stale-while-revalidate=86400"
+        }
+      ]
+    }
+  ],
+  "env": {
+    "NODE_ENV": "production"
+  },
+  "crons": [
+    {
+      "path": "/api/crawl/start",
+      "schedule": "0 2 * * *"
+    }
+  ]
+}

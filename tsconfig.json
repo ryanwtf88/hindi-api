@@ -19,15 +19,12 @@
             "bun-types"
         ],
         "baseUrl": ".",
-        "outDir": "./dist",
-        "rootDir": "./src",
-        "declaration": true,
-        "sourceMap": true,
         "paths": {
             "@/*": [
                 "./src/*"
             ]
-        }
+        },
+        "noEmit": true
     },
     "include": [
         "src/**/*"

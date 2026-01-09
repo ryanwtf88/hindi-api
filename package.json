@@ -1,5 +1,5 @@
 {
-  "name": "watchanimeworld-api",
+  "name": "hindi-api",
   "version": "1.0.0",
   "description": "A comprehensive RESTful API for scraping anime content from watchanimeworld.in",
   "main": "src/index.ts",
@@ -7,8 +7,6 @@
   "scripts": {
     "dev": "bun run --hot src/index.ts",
     "start": "bun run src/index.ts",
-    "build": "tsc",
-    "start:dist": "node dist/index.js",
     "test": "bun test",
     "test:integration": "bun test --integration"
   },
@@ -20,7 +18,7 @@
     "bun",
     "watchanimeworld"
   ],
-  "author": "",
+  "author": "RY4N",
   "license": "MIT",
   "dependencies": {
     "@hono/node-server": "^1.19.7",
